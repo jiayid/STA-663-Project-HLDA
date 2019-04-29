@@ -192,32 +192,36 @@ def hLDA(corpus, alpha, beta, gamma, eta, ite, level,num=3):
     
     return hLDA_tree, node_num[:level]
 
-def tree_plot(hlda,num=5):
-      
-    from IPython.display import Image, display
-    import matplotlib.pyplot as plt
-    from collections import Counter
+def tree_plot(hLDA_object, num = 3, save = False):
     
-    w=hlda[0]
-    s=hlda[1]
+    from IPython.display import Image, display
+    def viewPydot(pdot):
+        plt = Image(pdot.create_png())
+        display(plt)
+
+    words,struc = hLDA_object
     graph = pydot.Dot(graph_type='graph')
-    for i in range(1,len(s)):
-        n1=s[i] # 10
-        w1=w[i]
-        start=0
-        for j in range(len(n1)):
-            val=w[i-1][j]
-            val=list(dict(Counter(val).most_common(num)).keys())
-            root='\n'.join(val)
-            n2=n1[j] #8
-            end=start+n2
-            w2=w1[start:end]
-            for k in range(n2):
-                w3=w2[k]
-                val2=list(dict(Counter(w3).most_common(num)).keys())
-                leaf='\n'.join(val2)
-                edge = pydot.Edge(root, leaf)
-                graph.add_edge(edge)
-            start=end
-    plt = Image(graph.create_png())
-    display(plt)
+    end_index = [np.insert(np.cumsum(i),0,0) for i in struc]
+    
+    for level in range(len(struc)-1):
+        leaf_word = words[level + 1]
+        leaf_struc = struc[level + 1]
+        word = words[level]
+        end_leaf_index = end_index[level+1]
+
+        def node_plot(leaf_word, leaf_struc, end_leaf_index, word):
+            for i,e in enumerate(word):
+                root = '\n'.join([x[0] for x in Counter(e).most_common(num)])
+                lf = leaf_word[end_leaf_index[i]:end_leaf_index[i+1]]  
+                for l in lf:
+                    leaf_w = '\n'.join([x[0] for x in Counter(list(l)).most_common(num)])
+                    edge = pydot.Edge(root, leaf_w)
+                    graph.add_edge(edge)
+    
+        for w in word:
+            node_plot(leaf_word, leaf_struc, end_leaf_index, word)
+    
+    if save == True:
+        graph.write_png('graph.png')
+    
+    viewPydot(graph)
